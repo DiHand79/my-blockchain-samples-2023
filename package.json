@@ -1,0 +1,26 @@
+{
+  "name": "homework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "runmyapp": "npx hardhat run --network localhost ./scripts/local.js",
+    "deploy-l": "npx hardhat run --network localhost ./scripts/deploy.js",
+    "deploy-h": "npx hardhat run --network hardhat ./scripts/deploy.js",
+    "deploy-s": "npx hardhat run --network sepolia ./scripts/deploy.js",
+    "compile": "npx hardhat clean && npx hardhat compile",
+    "local": "npx hardhat node",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "hardhat": "^2.17.3"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "dotenv": "^16.3.1",
+    "hardhat-deploy": "^0.11.37"
+  }
+}
