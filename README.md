@@ -14,6 +14,8 @@ npx hardhat run scripts/deploy.js
 
 # helpers:
 
+repo: https://github.com/DiHand79/my-blockchain-samples-2023
+
 - https://youtu.be/E9kkzeFiCrY?si=FM4ideWX4OHjSdOt
 
 - https://hardhat.org/tutorial/creating-a-new-hardhat-project
@@ -22,6 +24,7 @@ npx hardhat run scripts/deploy.js
   npm install --save-dev hardhat
   npm install @nomicfoundation/hardhat-toolbox hardhat-deploy
   npm install dotenv --save
+  npm install @openzeppelin/contracts
 
 - // if FIRST time run & NO-config
   When Hardhat is run, it searches for the closest hardhat.config.js file starting from the current working  
