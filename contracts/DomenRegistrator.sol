@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 
-// sample code 
+// sample struct code 
 /*
     helpers: 
     https://docs.soliditylang.org/en/v0.8.21/layout-of-source-files.html
@@ -17,6 +17,11 @@ pragma solidity ^0.8.0;
 
     const contract = await ethers.deployContract("myContract");
     const address = await contract.getAddress();
+
+    // IDEAs: 
+    //  1 https://ethereum.stackexchange.com/questions/144/can-contracts-pay-the-gas-instead-of-the-message-sender
+
+
 */
 
 
@@ -25,87 +30,163 @@ contract DomenRegistrator {
 
     address public ownerContract;
     uint256 public minimalGasTax;
-    // uint public deposit = 0;
-    // string public domain;
-    // address[] owners;
-    // string[] domains;
 
     event TaxCollected(address indexed from, uint256 amount);
 
-
-    // my code
     // https://stackoverflow.com/questions/41894337/does-ethereum-solidity-support-associative-arrays
     // https://solidity-by-example.org/structs/
     // https://solidity-by-example.org/data-locations/
     // https://medium.com/coinmonks/solidity-storage-vs-memory-vs-calldata-8c7e8c38bce
-    struct QwnerStruct {
+    // my code
+    struct OwnerStruct {
         address ownerAddress;
-        string[] domainNames; // not work
-        // string domainNames; // work
+        string[] domainNames;
         uint256[] deposit;
         uint16[] updated;
     }
 
-    QwnerStruct[] private ownerStruct;
+    OwnerStruct[] private ownerStruct;
+
+    struct ReportStruct {
+        string domainName;
+        uint256 deposit;
+    }
+
+    ReportStruct private reportStruct;
 
     /**
         METHODS
     */
-    // work
-    function getDeposit( address ownerAddress ) public view returns ( uint256[] memory ) {
+   
+    // RIGHTs
+    modifier onlyOwner() {
+        require(msg.sender == ownerContract, "Only the owner can call this function");
+        _;
+    }
+
+    // VIEW METHODs
+    function getBalance( ) external view returns ( uint256 ) {
+        return ownerContract.balance;
+    }
+
+    function getDeposit( address _ownerAddress ) external view returns ( uint256[] memory ) {
         uint256[] memory _deposit;
         for (uint i = 0; i < ownerStruct.length; i++) 
         {
-            if(ownerStruct[i].ownerAddress == ownerAddress){
+            if(ownerStruct[i].ownerAddress == _ownerAddress){
                 _deposit = ownerStruct[i].deposit;
                 break;
             } 
         }
         return _deposit;
     }
-    // work
-    function getUpdated( address ownerAddress ) public view returns ( uint16[] memory ) {
+
+    function getListUpdateDate( address _ownerAddress ) external view returns ( uint16[] memory ) {
         uint16[] memory _updated;
         for (uint i = 0; i < ownerStruct.length; i++) 
         {
-            if(ownerStruct[i].ownerAddress == ownerAddress){
+            if(ownerStruct[i].ownerAddress == _ownerAddress){
                 _updated = ownerStruct[i].updated;
                 break;
             } 
         }
         return _updated;
     }
-    // work
-    function getAllData() public view returns ( QwnerStruct[] memory) {
+
+    function getAllData() external view returns ( OwnerStruct[] memory) {
         return ownerStruct;
     }
-    //
-    function uintToString(uint256 value) internal pure returns (string memory) {
-    if (value == 0) {
-        return "0";
-    }
-    
-    uint256 temp = value;
-    uint256 digits;
-    
-    while (temp != 0) {
-        digits++;
-        temp /= 10;
-    }
-    
-    bytes memory buffer = new bytes(digits);
-    while (value != 0) {
-        digits--;
-        buffer[digits] = bytes1(uint8(48 + value % 10));
-        value /= 10;
-    }
-    
-    return string(buffer);
-}
-    // work
-    function addNewDomain ( address _userAddress, string calldata _domainName ) public payable {
 
-        require(msg.value >= minimalGasTax, string.concat(uintToString(msg.value) ," : Tax amount is less than minimum"));    
+    // // Error: overflow [ See: https://links.ethers.org/v5-errors-NUMERIC_FAULT-overflow ] 
+    // // (fault=\"overflow\", operation=\"toNumber\", 
+    // function getAllOwners () public view returns(address[] memory)  {
+        
+    //     address[] memory allOwnerList;
+
+    //     for (uint i = 0; i < ownerStruct.length; i++) 
+    //     {
+    //         allOwnerList[i] = ownerStruct[i].ownerAddress;
+    //     }
+
+    //     return allOwnerList;
+    // }
+    // // Error: overflow [ See: https://links.ethers.org/v5-errors-NUMERIC_FAULT-overflow ] 
+    // // (fault=\"overflow\", operation=\"toNumber\", 
+    // function getAllRegisteredDomains () public view returns(string[] memory)  {
+        
+    //     string[] memory allDomains;
+    //     uint256 count = 0;
+
+    //     for (uint i = 0; i < ownerStruct.length; i++) 
+    //     {
+    //         for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) {
+    //             allDomains[count] = ownerStruct[i].domainNames[j];
+    //             count++;
+    //         }
+    //     }
+    //     return allDomains;
+    // }
+
+    function getCurrentOwnerData ( address _ownerAddress ) external view returns( OwnerStruct memory)  {
+        
+        OwnerStruct memory ownerData;
+
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            if( ownerStruct[i].ownerAddress == _ownerAddress ) {
+                ownerData =  ownerStruct[i];
+            }
+        }
+
+        return ownerData;
+    }
+
+    function getAllDomainsFromCurrentOwner ( address _ownerAddress ) external view returns(string[] memory)  {
+        
+        string[] memory allOwnerDomains;
+
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            if( ownerStruct[i].ownerAddress == _ownerAddress ) {
+                allOwnerDomains = ownerStruct[i].domainNames;
+                break;
+            }
+        }
+        return allOwnerDomains;
+    }
+
+    // WHO WORK BUT NOT ALL TIME ???? may bw bug with use adderess variable
+    // STRANGE WORK 
+    /*
+    revert
+	The transaction has been reverted to the initial state.
+    Note: The called function should be payable if you send value and the value you send should be less than your current balance.
+    Debug the transaction to get more information.
+    */
+    function getOwnerFromDomain ( string calldata _domainName ) external view returns(address)  {
+        
+        address _owner;
+
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            for (uint j = 0; i < ownerStruct[i].domainNames.length; i++) {
+                
+                if(keccak256(bytes(ownerStruct[i].domainNames[j])) == keccak256(bytes(_domainName))){
+                    _owner = ownerStruct[i].ownerAddress;
+                    // return ownerStruct[i].ownerAddress;
+                }
+            }
+        }
+        return _owner;
+    }
+
+    // ADD 
+    function addNewDomain ( address _ownerAddress, string calldata _domainName ) public payable {
+
+        require( msg.value >= minimalGasTax, 
+            string.concat(uintToString(msg.value), 
+            " : Tax amount is less than minimum")
+        );    
         uint256 _deposit = msg.value;
     
         bool exist = false;
@@ -120,7 +201,7 @@ contract DomenRegistrator {
         uint256[] memory initDeposit = new uint256[](1);
         initDeposit[0] = _deposit;
 
-        address ownerAddress = _userAddress;// msg.sender; // for test - user can input address
+        address ownerAddress = _ownerAddress;// msg.sender; // for test - user can input address
 
         for (uint i = 0; i < ownerStruct.length; i++) 
         {
@@ -137,13 +218,30 @@ contract DomenRegistrator {
             // https://www.educative.io/answers/how-to-perform-string-concatenation-in-solidity
 
             // ownerStruct[indexExist].domainNames = string.concat(ownerStruct[indexExist].domainNames, " ; ", _domainName);
-            
+            bool isUsed = false;
+            for (uint i = 0; i < ownerStruct.length; i++) {
+
+                for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) 
+                {
+
+                    if (keccak256(bytes(ownerStruct[i].domainNames[j])) == keccak256(bytes(_domainName))) {
+                        isUsed = true;
+                    }
+                    require( !isUsed, 
+                        string.concat(uintToString(msg.value), 
+                        " : this domain name has registered. Please write non-used domain name")
+                    );    
+                }
+            }
+
             ownerStruct[indexExist].domainNames.push(_domainName);
             ownerStruct[indexExist].deposit.push(_deposit);
             ownerStruct[indexExist].updated.push(uint16(block.timestamp));
+
         } else {
+
             ownerStruct.push(
-                QwnerStruct({
+                OwnerStruct({
                     ownerAddress : ownerAddress,
                     domainNames : initURL,
                     deposit : initDeposit,
@@ -155,24 +253,57 @@ contract DomenRegistrator {
         emit TaxCollected(msg.sender, msg.value);
        
     }
-    // function getAllOwners () public returns(address[])  {}
-    // function getAllRegisteredDomains () public returns(string[])  {}
-    // function getCurrentOwnerData ( address _owner ) public returns(address[])  {}
-    // function getOwnerFromDomain ( string _domain ) public returns(address[])  {}
 
-    // function removeDomainFromOwner ()  // & rebvert deposite to owner
-    // IDEAs: 
-    //  1 https://ethereum.stackexchange.com/questions/144/can-contracts-pay-the-gas-instead-of-the-message-sender
+    // REMOVE
 
+    // PROBLEM SIMILAR as in getOwnerFromDomain()
+    function removeDomainFromOwner ( string calldata _domainName, address payable _ownerAddress ) public payable { //returns ( ReportStruct memory)
 
-    modifier onlyOwner() {
-        require(msg.sender == ownerContract, "Only the owner can call this function");
-        _;
+        // TODO: 
+        // If owner have domans.length == 0 => remove owner? 
+        
+
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            if( ownerStruct[i].ownerAddress == _ownerAddress){
+
+                for (uint j = 0; i < ownerStruct[i].domainNames.length; i++) {
+                    
+                    if(keccak256(bytes(ownerStruct[i].domainNames[j])) == keccak256(bytes(_domainName))){
+                        // correct remove element from []
+                        // https://blog.solidityscan.com/improper-array-deletion-82672eed8e8d
+
+                        // revert deposit
+                        reportStruct.deposit = ownerStruct[i].deposit[j];
+                        _ownerAddress.transfer( ownerStruct[i].deposit[j] );
+
+                        // clear domain array data
+                        reportStruct.domainName = ownerStruct[i].domainNames[j];
+                        ownerStruct[i].domainNames[j] = ownerStruct[i].domainNames[ownerStruct[i].domainNames.length -1];
+                        ownerStruct[i].domainNames.pop();
+
+                        // clear deposit array data
+                        ownerStruct[i].deposit[j] = ownerStruct[i].deposit[ownerStruct[i].deposit.length -1];
+                        ownerStruct[i].deposit.pop();
+
+                        break;
+
+                    }
+                }
+            }
+
+        }
+        // return reportStruct;
     }
 
+    /*
+        ROOT
+    */
     function setMinimumTaxAmount(uint256 _newMinimalGasTax) public onlyOwner {
         minimalGasTax = _newMinimalGasTax;
     }
+
+
 
     constructor (uint _minimalGasTax) {
         minimalGasTax = _minimalGasTax;
@@ -180,89 +311,38 @@ contract DomenRegistrator {
     }
 
 
+    /**
+     *  UTILS
+     */
+    function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        
+        uint256 temp = value;
+        uint256 digits;
+        
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits--;
+            buffer[digits] = bytes1(uint8(48 + value % 10));
+            value /= 10;
+        }
+        
+        return string(buffer);
+    }
 
-    // TEST
+    /**
+     *  TEST
+     */
     // Реалізуйте юніт-тести для всього функціонала, і, власне, сам контракт.
 
 
 
 
 }
-//
-    //
-    //// chatGPT generated code
-    // struct DataRecord {
-    //     address clientAddress;
-    //     string url;
-    //     uint256 creationTime;
-    // }
-
-    // uint256 public ethRequired; // Amount of ETH required to start work
-    // string[] public savedUrls;
-    // address[] public addressesWithRecords;
-    // mapping(address => DataRecord) public dataRecords;
-
-
-    // event DataStored(address indexed clientAddress, string url);
-    // event EthRequiredUpdated(uint256 newEthRequired);
-
-    // constructor(uint256 _ethRequired) {
-    //     ethRequired = _ethRequired;
-    // }
-
-    // // Deposit ETH to start work
-    // function deposit() external payable {
-    //     require(msg.value >= ethRequired, "Insufficient ETH");
-    // }
-
-    // // Save URL and client Ethereum address data
-    // function saveData(string memory _url) external {
-    //     require(bytes(_url).length > 0, "URL cannot be empty");
-    //     require(msg.sender != address(0), "Invalid address");
-
-    //     DataRecord storage record = dataRecords[msg.sender];
-    //     require(record.creationTime == 0, "Data already saved");
-
-    //     record.clientAddress = msg.sender;
-    //     record.url = _url;
-    //     record.creationTime = block.timestamp;
-
-    //     addressesWithRecords.push(msg.sender);
-    //     savedUrls.push(_url);
-
-    //     emit DataStored(msg.sender, _url);
-    // }
-
-    // // Get all data records
-    // function getAllData() external view returns (DataRecord[] memory) {
-    //     DataRecord[] memory allData = new DataRecord[](addressesWithRecords.length);
-    //     for (uint256 i = 0; i < addressesWithRecords.length; i++) {
-    //         allData[i] = dataRecords[addressesWithRecords[i]];
-    //     }
-    //     return allData;
-    // }
-
-    // // Get data for the sender's address
-    // function getDataForSender() external view returns (DataRecord memory) {
-    //     return dataRecords[msg.sender];
-    // }
-
-    // // Get all saved URLs
-    // function getAllSavedUrls() external view returns (string[] memory) {
-    //     return savedUrls;
-    // }
-
-    // // Get creation time for a specific URL
-    // function getCreationTimeForUrl(string memory _url) external view returns (uint256) {
-    //     for (uint256 i = 0; i < addressesWithRecords.length; i++) {
-    //         address addr = addressesWithRecords[i];
-    //         if (keccak256(bytes(dataRecords[addr].url)) == keccak256(bytes(_url))) {
-    //             return dataRecords[addr].creationTime;
-    //         }
-    //     }
-    //     revert("URL not found");
-    // }
-
-
-    // // Fallback function to receive Ether
-    // receive() external payable {}
