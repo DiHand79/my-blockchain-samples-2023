@@ -20,16 +20,16 @@ pragma solidity ^0.8.0;
 
     // IDEAs: 
     //  1 https://ethereum.stackexchange.com/questions/144/can-contracts-pay-the-gas-instead-of-the-message-sender
-
-
 */
 
+import './DomainChecker.sol';
 
 // contract DataStorage is Ownable {
 contract DomainRegistrator {
 
     address public ownerContract;
     uint256 public minimalGasTax;
+    DomainChecker public domainChecker;
 
     event TaxCollected(address indexed from, uint256 amount);
 
@@ -39,7 +39,7 @@ contract DomainRegistrator {
     // https://medium.com/coinmonks/solidity-storage-vs-memory-vs-calldata-8c7e8c38bce
     // my code
     struct OwnerStruct {
-        address ownerAddress;
+        address payable ownerAddress;
         string[] domainNames;
         uint256[] deposit;
         uint16[] updated;
@@ -57,11 +57,18 @@ contract DomainRegistrator {
     /**
         METHODS
     */
+
    
     // RIGHTs
     modifier onlyOwner() {
         require(msg.sender == ownerContract, "Only the owner can call this function");
         _;
+    }
+
+    // PAYMENT
+    function withdrawEther( address payable recipient, uint256 amount) public {
+        require( recipient.balance >= amount  ,'Balanse less then amount');
+        recipient.transfer(amount);
     }
 
     // VIEW METHODs
@@ -103,33 +110,33 @@ contract DomainRegistrator {
 
     // // Error: overflow [ See: https://links.ethers.org/v5-errors-NUMERIC_FAULT-overflow ] 
     // // (fault=\"overflow\", operation=\"toNumber\", 
-    // function getAllOwners () public view returns(address[] memory)  {
+    function getAllOwners () public view returns(address[] memory)  {
         
-    //     address[] memory allOwnerList;
+        address[] memory allOwnerList;
 
-    //     for (uint i = 0; i < ownerStruct.length; i++) 
-    //     {
-    //         allOwnerList[i] = ownerStruct[i].ownerAddress;
-    //     }
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            allOwnerList[i] = ownerStruct[i].ownerAddress;
+        }
 
-    //     return allOwnerList;
-    // }
-    // // Error: overflow [ See: https://links.ethers.org/v5-errors-NUMERIC_FAULT-overflow ] 
-    // // (fault=\"overflow\", operation=\"toNumber\", 
-    // function getAllRegisteredDomains () public view returns(string[] memory)  {
+        return allOwnerList;
+    }
+    // Error: overflow [ See: https://links.ethers.org/v5-errors-NUMERIC_FAULT-overflow ] 
+    // (fault=\"overflow\", operation=\"toNumber\", 
+    function getAllRegisteredDomains () public view returns(string[] memory)  {
         
-    //     string[] memory allDomains;
-    //     uint256 count = 0;
+        string[] memory allDomains;
+        uint256 count = 0;
 
-    //     for (uint i = 0; i < ownerStruct.length; i++) 
-    //     {
-    //         for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) {
-    //             allDomains[count] = ownerStruct[i].domainNames[j];
-    //             count++;
-    //         }
-    //     }
-    //     return allDomains;
-    // }
+        for (uint i = 0; i < ownerStruct.length; i++) 
+        {
+            for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) {
+                allDomains[count] = ownerStruct[i].domainNames[j];
+                count++;
+            }
+        }
+        return allDomains;
+    }
 
     function getCurrentOwnerData ( address _ownerAddress ) external view returns( OwnerStruct memory)  {
         
@@ -173,7 +180,7 @@ contract DomainRegistrator {
 
         for (uint i = 0; i < ownerStruct.length; i++) 
         {
-            for (uint j = 0; i < ownerStruct[i].domainNames.length; i++) {
+            for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) {
                 
                 if(keccak256(bytes(ownerStruct[i].domainNames[j])) == keccak256(bytes(_domainName))){
                     _owner = ownerStruct[i].ownerAddress;
@@ -185,17 +192,23 @@ contract DomainRegistrator {
     }
 
     // ADD 
-    function addNewDomain ( address _ownerAddress, string calldata _domainName ) public payable {
+    function addNewDomain ( address payable _ownerAddress, string calldata _domainName ) public payable {
 
         /**
            TODO FILTER FOR TOP.lvl.domain.name ONLY
-         */
+         
+            ???  Error: Transaction reverted: function returned an unexpected amount of data 
+        */
+        // require( domainChecker.isTopLevelDomain(_domainName), 'Domain name should be ONLY Top Level (A)');
 
+        // check input value
         require( msg.value >= minimalGasTax, 
             string.concat(uintToString(msg.value), 
             " : Tax amount is less than minimum")
         );    
         uint256 _deposit = msg.value;
+        withdrawEther( payable(ownerContract), msg.value);
+        // get gasPayment from _ownerAddress to ownerContract // see SpecFunc sample
     
         bool exist = false;
         uint256 indexExist = 0;
@@ -209,7 +222,7 @@ contract DomainRegistrator {
         uint256[] memory initDeposit = new uint256[](1);
         initDeposit[0] = _deposit;
 
-        address ownerAddress = _ownerAddress;// msg.sender; // for test - user can input address
+        address payable ownerAddress = _ownerAddress;// msg.sender; // for test - user can input address
 
         for (uint i = 0; i < ownerStruct.length; i++) 
         {
@@ -264,29 +277,31 @@ contract DomainRegistrator {
 
     // REMOVE
 
-    // PROBLEM SIMILAR as in getOwnerFromDomain()
-    function removeDomainFromOwner ( string calldata _domainName, address payable _ownerAddress ) public payable { //returns ( ReportStruct memory)
+    // PROBLEM contract runner does not support sending transactions (operation="sendTransaction", code=UNSUPPORTED_OPERATION, version=6.7.1)
+    // CAN BE in DEV mode - TODO - ask Andriyan
+    function removeDomainFromOwner ( string memory _domainName, address payable _ownerAddress ) public payable { //returns ( ReportStruct memory)
 
-        // TODO: 
-        // If owner have domans.length == 0 => remove owner? 
+        // TO_DO:  If owner have domans.length == 0 => remove owner? 
         
+        for (uint i = 0; i < ownerStruct.length; i++) {
 
-        for (uint i = 0; i < ownerStruct.length; i++) 
-        {
             if( ownerStruct[i].ownerAddress == _ownerAddress){
 
-                for (uint j = 0; i < ownerStruct[i].domainNames.length; i++) {
+                for (uint j = 0; j < ownerStruct[i].domainNames.length; j++) {
                     
                     if(keccak256(bytes(ownerStruct[i].domainNames[j])) == keccak256(bytes(_domainName))){
                         // correct remove element from []
                         // https://blog.solidityscan.com/improper-array-deletion-82672eed8e8d
 
                         // revert deposit
-                        reportStruct.deposit = ownerStruct[i].deposit[j];
-                        _ownerAddress.transfer( ownerStruct[i].deposit[j] );
+                        // reportStruct.deposit = ownerStruct[i].deposit[j];
+                        require( ownerStruct[i].deposit[j] > 0, 'Deposit is empty');
+                        // payable(_ownerAddress).transfer(ownerStruct[i].deposit[j]);
+                        // withdrawEther( payable(_ownerAddress), msg.value);
+                        withdrawEther( _ownerAddress, msg.value);
 
                         // clear domain array data
-                        reportStruct.domainName = ownerStruct[i].domainNames[j];
+                        // reportStruct.domainName = ownerStruct[i].domainNames[j];
                         ownerStruct[i].domainNames[j] = ownerStruct[i].domainNames[ownerStruct[i].domainNames.length -1];
                         ownerStruct[i].domainNames.pop();
 
@@ -295,9 +310,9 @@ contract DomainRegistrator {
                         ownerStruct[i].deposit.pop();
 
                         break;
-
                     }
                 }
+                // break;
             }
 
         }
@@ -313,9 +328,13 @@ contract DomainRegistrator {
 
 
 
-    constructor (uint _minimalGasTax) {
+    constructor (
+        uint _minimalGasTax
+        // DomainChecker _domainChecker
+    ) {
         minimalGasTax = _minimalGasTax;
-        ownerContract = msg.sender;  // get address
+        ownerContract = msg.sender;  // get address payable
+        // domainChecker = _domainChecker;
     }
 
 
