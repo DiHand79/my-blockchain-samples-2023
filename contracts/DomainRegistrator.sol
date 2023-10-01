@@ -26,7 +26,7 @@ pragma solidity ^0.8.0;
 
 
 // contract DataStorage is Ownable {
-contract DomenRegistrator {
+contract DomainRegistrator {
 
     address public ownerContract;
     uint256 public minimalGasTax;
@@ -67,6 +67,10 @@ contract DomenRegistrator {
     // VIEW METHODs
     function getBalance( ) external view returns ( uint256 ) {
         return ownerContract.balance;
+    }
+
+    function getMinimumTaxt( ) external view returns ( uint256 ) {
+        return minimalGasTax;
     }
 
     function getDeposit( address _ownerAddress ) external view returns ( uint256[] memory ) {
@@ -182,6 +186,10 @@ contract DomenRegistrator {
 
     // ADD 
     function addNewDomain ( address _ownerAddress, string calldata _domainName ) public payable {
+
+        /**
+           TODO FILTER FOR TOP.lvl.domain.name ONLY
+         */
 
         require( msg.value >= minimalGasTax, 
             string.concat(uintToString(msg.value), 
@@ -336,13 +344,5 @@ contract DomenRegistrator {
         
         return string(buffer);
     }
-
-    /**
-     *  TEST
-     */
-    // Реалізуйте юніт-тести для всього функціонала, і, власне, сам контракт.
-
-
-
 
 }
